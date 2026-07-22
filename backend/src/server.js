@@ -6,7 +6,7 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 
 const parseBook = (book) => ({
   ...book,
@@ -25,12 +25,12 @@ app.get('/api/books/:id', (req, res) => {
 });
 
 app.post('/api/books', (req, res) => {
-  const { title, author, editorial, year_of_publication, isbn, tags, cover_image } = req.body;
+  const { title, author, editorial, year_of_publication, isbn, tags, cover_image, description } = req.body;
   if (!title) return res.status(400).json({ error: 'Title is required' });
 
   const result = db.prepare(`
-    INSERT INTO books (title, author, editorial, year_of_publication, isbn, tags, cover_image)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO books (title, author, editorial, year_of_publication, isbn, tags, cover_image, description)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     title,
     author || '',
@@ -38,7 +38,8 @@ app.post('/api/books', (req, res) => {
     year_of_publication || null,
     isbn || '',
     JSON.stringify(tags || []),
-    cover_image || null
+    cover_image || null,
+    description || null
   );
 
   const book = db.prepare('SELECT * FROM books WHERE id = ?').get(Number(result.lastInsertRowid));
@@ -46,7 +47,7 @@ app.post('/api/books', (req, res) => {
 });
 
 app.put('/api/books/:id', (req, res) => {
-  const { title, author, editorial, year_of_publication, isbn, tags, cover_image } = req.body;
+  const { title, author, editorial, year_of_publication, isbn, tags, cover_image, description } = req.body;
   if (!title) return res.status(400).json({ error: 'Title is required' });
 
   const exists = db.prepare('SELECT * FROM books WHERE id = ?').get(req.params.id);
@@ -55,7 +56,7 @@ app.put('/api/books/:id', (req, res) => {
   db.prepare(`
     UPDATE books
     SET title = ?, author = ?, editorial = ?, year_of_publication = ?,
-        isbn = ?, tags = ?, cover_image = ?, updated_at = datetime('now')
+        isbn = ?, tags = ?, cover_image = ?, description = ?, updated_at = datetime('now')
     WHERE id = ?
   `).run(
     title,
@@ -65,6 +66,7 @@ app.put('/api/books/:id', (req, res) => {
     isbn || '',
     JSON.stringify(tags || []),
     cover_image !== undefined ? cover_image : exists.cover_image,
+    description !== undefined ? description : exists.description,
     req.params.id
   );
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { createBook, updateBook, getBook, lookupISBN, BookFormData } from '../api';
 import { BarcodeScanner } from './BarcodeScanner';
@@ -20,6 +20,7 @@ const EMPTY_FORM: BookFormData = {
   isbn: '',
   tags: [],
   cover_image: null,
+  description: null,
 };
 
 type LookupStatus = 'idle' | 'loading' | 'found' | 'not-found';
@@ -31,6 +32,7 @@ export function BookForm() {
 
   const [form, setForm] = useState<BookFormData>(EMPTY_FORM);
   const [showScanner, setShowScanner] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [saving, setSaving] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [lookupStatus, setLookupStatus] = useState<LookupStatus>('idle');
@@ -48,6 +50,7 @@ export function BookForm() {
           isbn: book.isbn,
           tags: book.tags,
           cover_image: book.cover_image,
+          description: book.description,
         })
       )
       .finally(() => setFetching(false));
@@ -107,6 +110,7 @@ export function BookForm() {
       {showScanner && (
         <BarcodeScanner onScan={handleScan} onClose={() => setShowScanner(false)} />
       )}
+      <canvas ref={canvasRef} className="hidden" />
 
       <div className="pb-10">
         <div className="flex items-center gap-3 mb-6">
@@ -244,6 +248,20 @@ export function BookForm() {
             </div>
           </div>
 
+          {/* Description */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <textarea
+              value={form.description ?? ''}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, description: e.target.value || null }))
+              }
+              placeholder="Notes, impressions, summary…"
+              rows={4}
+              className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+            />
+          </div>
+
           {/* Cover image */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Cover Image</label>
@@ -270,10 +288,19 @@ export function BookForm() {
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (!file) return;
-                const reader = new FileReader();
-                reader.onload = () =>
-                  setForm((prev) => ({ ...prev, cover_image: reader.result as string }));
-                reader.readAsDataURL(file);
+                const img = new Image();
+                const url = URL.createObjectURL(file);
+                img.onload = () => {
+                  const MAX = 600;
+                  const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+                  const canvas = canvasRef.current!;
+                  canvas.width = img.width * scale;
+                  canvas.height = img.height * scale;
+                  canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
+                  setForm((prev) => ({ ...prev, cover_image: canvas.toDataURL('image/jpeg', 0.8) }));
+                  URL.revokeObjectURL(url);
+                };
+                img.src = url;
               }}
               className="block w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
             />

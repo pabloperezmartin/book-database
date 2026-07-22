@@ -24,14 +24,7 @@ export function BookCard({ book, onDeleted }: BookCardProps) {
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition-shadow">
-      <div className="flex justify-between items-start gap-3">
-        {book.cover_image && (
-          <img
-            src={book.cover_image}
-            alt="Cover"
-            className="w-14 h-20 object-cover rounded-lg border border-gray-200 shrink-0"
-          />
-        )}
+      <div className="flex items-start gap-3">
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold text-gray-900 leading-snug">{book.title}</h3>
           {book.author && (
@@ -52,6 +45,9 @@ export function BookCard({ book, onDeleted }: BookCardProps) {
               </>
             )}
           </div>
+          {book.description && (
+            <p className="text-xs text-gray-500 mt-1.5 line-clamp-2">{book.description}</p>
+          )}
           {book.tags.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mt-2">
               {book.tags.map((tag) => (
@@ -65,6 +61,13 @@ export function BookCard({ book, onDeleted }: BookCardProps) {
             </div>
           )}
         </div>
+        {book.cover_image && (
+          <img
+            src={book.cover_image}
+            alt="Cover"
+            className="w-14 h-20 object-cover rounded-lg border border-gray-200 shrink-0"
+          />
+        )}
         <div className="flex gap-1 shrink-0 mt-0.5">
           <button
             onClick={() => navigate(`/edit/${book.id}`)}

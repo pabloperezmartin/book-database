@@ -24,4 +24,10 @@ try {
   // column already exists
 }
 
+try {
+  db.exec(`ALTER TABLE books ADD COLUMN description TEXT DEFAULT NULL`);
+} catch {
+  // column already exists
+}
+
 module.exports = db;

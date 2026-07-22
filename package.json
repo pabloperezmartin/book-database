@@ -1,0 +1,13 @@
+{
+  "name": "book-database",
+  "private": true,
+  "scripts": {
+    "dev": "lsof -nP -iTCP:3001 -iTCP:5173 | awk 'NR>1{print $2}' | sort -u | xargs kill 2>/dev/null; sleep 0.5; concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "npm --prefix backend start",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "install:all": "npm install && npm --prefix backend install && npm --prefix frontend install --legacy-peer-deps"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  }
+}

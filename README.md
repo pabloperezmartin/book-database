@@ -38,12 +38,51 @@ npm run dev
 | `npm run dev:frontend` | Start frontend only |
 | `npm run install:all` | Install all dependencies (root + backend + frontend) |
 
+## Accessing from your phone
+
+The barcode scanner requires camera access, which browsers only allow over **HTTPS**. The easiest way to get a secure public URL is with [ngrok](https://ngrok.com).
+
+**1. Install ngrok** (once):
+
+```bash
+brew install ngrok
+```
+
+Then create a free account at ngrok.com and authenticate:
+
+```bash
+ngrok config add-authtoken <your-token>
+```
+
+**2. Start the app** as usual:
+
+```bash
+npm run dev
+```
+
+**3. In a separate terminal, expose the frontend:**
+
+```bash
+ngrok http 5173
+```
+
+ngrok will print a line like:
+
+```text
+Forwarding  https://abc123.ngrok-free.app -> http://localhost:5173
+```
+
+Open that `https://` URL on your phone. The first time, ngrok may show a browser warning — tap **Visit Site** to continue. The camera and barcode scanner will work because the connection is HTTPS.
+
+> **Note:** Always stop the app with **Ctrl+C**, not Ctrl+Z. Using Ctrl+Z suspends the process without releasing the port, which causes `EADDRINUSE` errors on the next start.
+
 ## Features
 
 - **Browse** your book collection
-- **Add books** with title, author, editorial, year, ISBN, and tags
+- **Add books** with title, author, editorial, year, ISBN, tags, description, and cover photo
 - **Edit or delete** existing books
 - **Scan ISBN barcodes** using your device camera
+- **Look up book info** automatically from Open Library by ISBN
 
 ## API Endpoints
 

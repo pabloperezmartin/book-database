@@ -53,6 +53,32 @@ export async function deleteBook(id: number): Promise<void> {
   if (!res.ok && res.status !== 404) throw new Error('Failed to delete book');
 }
 
+export interface TitleSearchResult {
+  title: string;
+  author: string;
+  editorial: string;
+  year_of_publication: number | null;
+  isbn: string;
+}
+
+export async function searchByTitle(query: string): Promise<TitleSearchResult[]> {
+  try {
+    const url = `https://openlibrary.org/search.json?title=${encodeURIComponent(query)}&limit=7&fields=title,author_name,publisher,first_publish_year,isbn`;
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.docs as Array<Record<string, unknown>>).map((doc) => ({
+      title: (doc.title as string) || '',
+      author: (doc.author_name as string[])?.[0] || '',
+      editorial: (doc.publisher as string[])?.[0] || '',
+      year_of_publication: (doc.first_publish_year as number) || null,
+      isbn: (doc.isbn as string[])?.[0] || '',
+    }));
+  } catch {
+    return [];
+  }
+}
+
 export async function lookupISBN(isbn: string): Promise<Partial<BookFormData>> {
   try {
     const url = `https://openlibrary.org/api/books?bibkeys=ISBN:${isbn}&format=json&jscmd=data`;

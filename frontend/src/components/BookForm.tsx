@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { createBook, updateBook, getBook, lookupISBN, BookFormData } from '../api';
+import { createBook, updateBook, getBook, getBooks, lookupISBN, searchByTitle, TitleSearchResult, BookFormData } from '../api';
 import { BarcodeScanner } from './BarcodeScanner';
 
 const TAGS = ['Documentary', 'Portrait', 'Nudity', 'Fashion'] as const;
@@ -24,6 +24,7 @@ const EMPTY_FORM: BookFormData = {
 };
 
 type LookupStatus = 'idle' | 'loading' | 'found' | 'not-found';
+type SearchMode = 'isbn' | 'title';
 
 export function BookForm() {
   const navigate = useNavigate();
@@ -36,6 +37,19 @@ export function BookForm() {
   const [saving, setSaving] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [lookupStatus, setLookupStatus] = useState<LookupStatus>('idle');
+  const [searchMode, setSearchMode] = useState<SearchMode>('isbn');
+  const [titleQuery, setTitleQuery] = useState('');
+  const [titleResults, setTitleResults] = useState<TitleSearchResult[]>([]);
+  const [titleSearching, setTitleSearching] = useState(false);
+  const [publishers, setPublishers] = useState<string[]>([]);
+  const [authors, setAuthors] = useState<string[]>([]);
+
+  useEffect(() => {
+    getBooks().then((books) => {
+      setPublishers([...new Set(books.map((b) => b.editorial).filter(Boolean))].sort());
+      setAuthors([...new Set(books.map((b) => b.author).filter(Boolean))].sort());
+    });
+  }, []);
 
   useEffect(() => {
     if (!isEditing || !id) return;
@@ -72,6 +86,28 @@ export function BookForm() {
     setShowScanner(false);
     setForm((prev) => ({ ...prev, isbn }));
     handleISBNLookup(isbn);
+  };
+
+  const handleTitleSearch = async () => {
+    if (!titleQuery.trim()) return;
+    setTitleSearching(true);
+    setTitleResults([]);
+    const results = await searchByTitle(titleQuery.trim());
+    setTitleResults(results);
+    setTitleSearching(false);
+  };
+
+  const applyTitleResult = (result: TitleSearchResult) => {
+    setForm((prev) => ({
+      ...prev,
+      title: result.title || prev.title,
+      author: result.author || prev.author,
+      editorial: result.editorial || prev.editorial,
+      year_of_publication: result.year_of_publication ?? prev.year_of_publication,
+      isbn: result.isbn || prev.isbn,
+    }));
+    setTitleResults([]);
+    setTitleQuery('');
   };
 
   const toggleTag = (tag: string) =>
@@ -127,43 +163,108 @@ export function BookForm() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* ISBN */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">ISBN</label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={form.isbn}
-                onChange={(e) => setForm((prev) => ({ ...prev, isbn: e.target.value }))}
-                placeholder="e.g. 9780061965784"
-                className="flex-1 border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
+          {/* Book lookup */}
+          <div className="border border-gray-200 rounded-xl p-3 bg-gray-50">
+            <p className="text-xs font-medium text-gray-500 mb-2">Look up book info</p>
+
+            {/* Tabs */}
+            <div className="flex gap-1 mb-3">
               <button
                 type="button"
-                onClick={() => setShowScanner(true)}
-                className="bg-indigo-600 text-white px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-indigo-700 whitespace-nowrap"
+                onClick={() => { setSearchMode('isbn'); setTitleResults([]); }}
+                className={`flex-1 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  searchMode === 'isbn' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-500 border border-gray-300'
+                }`}
               >
-                📷 Scan
+                By ISBN
               </button>
-              {form.isbn && (
-                <button
-                  type="button"
-                  onClick={() => handleISBNLookup(form.isbn)}
-                  disabled={lookupStatus === 'loading'}
-                  className="bg-gray-100 text-gray-700 px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-200 whitespace-nowrap disabled:opacity-50"
-                >
-                  🔍
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => { setSearchMode('title'); setLookupStatus('idle'); }}
+                className={`flex-1 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  searchMode === 'title' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-500 border border-gray-300'
+                }`}
+              >
+                By Title
+              </button>
             </div>
-            {lookupStatus === 'loading' && (
-              <p className="text-xs text-indigo-500 mt-1.5">Looking up book info…</p>
+
+            {searchMode === 'isbn' && (
+              <div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={form.isbn}
+                    onChange={(e) => setForm((prev) => ({ ...prev, isbn: e.target.value }))}
+                    placeholder="e.g. 9780061965784"
+                    className="flex-1 border border-gray-300 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowScanner(true)}
+                    className="bg-indigo-600 text-white px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-indigo-700 whitespace-nowrap"
+                  >
+                    📷 Scan
+                  </button>
+                  {form.isbn && (
+                    <button
+                      type="button"
+                      onClick={() => handleISBNLookup(form.isbn)}
+                      disabled={lookupStatus === 'loading'}
+                      className="bg-white border border-gray-300 text-gray-700 px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-50 whitespace-nowrap disabled:opacity-50"
+                    >
+                      🔍
+                    </button>
+                  )}
+                </div>
+                {lookupStatus === 'loading' && <p className="text-xs text-indigo-500 mt-1.5">Looking up book info…</p>}
+                {lookupStatus === 'found' && <p className="text-xs text-green-600 mt-1.5">✓ Book info filled in automatically</p>}
+                {lookupStatus === 'not-found' && <p className="text-xs text-amber-600 mt-1.5">Not found in Open Library. Fill in manually.</p>}
+              </div>
             )}
-            {lookupStatus === 'found' && (
-              <p className="text-xs text-green-600 mt-1.5">✓ Book info found and filled in automatically</p>
-            )}
-            {lookupStatus === 'not-found' && (
-              <p className="text-xs text-amber-600 mt-1.5">Book not found in Open Library. Please fill in manually.</p>
+
+            {searchMode === 'title' && (
+              <div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={titleQuery}
+                    onChange={(e) => setTitleQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleTitleSearch())}
+                    placeholder="Search by title…"
+                    className="flex-1 border border-gray-300 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleTitleSearch}
+                    disabled={titleSearching}
+                    className="bg-indigo-600 text-white px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-indigo-700 whitespace-nowrap disabled:opacity-50"
+                  >
+                    {titleSearching ? '…' : '🔍 Search'}
+                  </button>
+                </div>
+                {titleResults.length > 0 && (
+                  <ul className="mt-2 border border-gray-200 rounded-xl bg-white overflow-hidden divide-y divide-gray-100">
+                    {titleResults.map((r, i) => (
+                      <li key={i}>
+                        <button
+                          type="button"
+                          onClick={() => applyTitleResult(r)}
+                          className="w-full text-left px-3 py-2.5 hover:bg-indigo-50 transition-colors"
+                        >
+                          <p className="text-sm font-medium text-gray-800 leading-snug">{r.title}</p>
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            {[r.author, r.editorial, r.year_of_publication].filter(Boolean).join(' · ')}
+                          </p>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {!titleSearching && titleQuery && titleResults.length === 0 && (
+                  <p className="text-xs text-amber-600 mt-1.5">No results found.</p>
+                )}
+              </div>
             )}
           </div>
 
@@ -187,11 +288,15 @@ export function BookForm() {
             <label className="block text-sm font-medium text-gray-700 mb-1">Author</label>
             <input
               type="text"
+              list="authors-list"
               value={form.author}
               onChange={(e) => setForm((prev) => ({ ...prev, author: e.target.value }))}
               placeholder="Author name"
               className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
+            <datalist id="authors-list">
+              {authors.map((a) => <option key={a} value={a} />)}
+            </datalist>
           </div>
 
           {/* Editorial */}
@@ -199,11 +304,15 @@ export function BookForm() {
             <label className="block text-sm font-medium text-gray-700 mb-1">Editorial / Publisher</label>
             <input
               type="text"
+              list="publishers-list"
               value={form.editorial}
               onChange={(e) => setForm((prev) => ({ ...prev, editorial: e.target.value }))}
               placeholder="Publisher name"
               className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
+            <datalist id="publishers-list">
+              {publishers.map((p) => <option key={p} value={p} />)}
+            </datalist>
           </div>
 
           {/* Year */}
@@ -211,6 +320,7 @@ export function BookForm() {
             <label className="block text-sm font-medium text-gray-700 mb-1">Year of Publication</label>
             <input
               type="number"
+              list="years-list"
               min="1000"
               max="2099"
               value={form.year_of_publication ?? ''}
@@ -223,6 +333,11 @@ export function BookForm() {
               placeholder="e.g. 2023"
               className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
+            <datalist id="years-list">
+              {Array.from({ length: new Date().getFullYear() - 1799 }, (_, i) => new Date().getFullYear() - i).map(
+                (y) => <option key={y} value={y} />
+              )}
+            </datalist>
           </div>
 
           {/* Tags */}
@@ -284,7 +399,6 @@ export function BookForm() {
             <input
               type="file"
               accept="image/*"
-              capture="environment"
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (!file) return;

@@ -5,3 +5,4 @@ backend/books.db
 frontend/dist/
 .DS_Store
 .env
+.history/

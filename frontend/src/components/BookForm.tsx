@@ -15,6 +15,7 @@ const TAG_COLORS: Record<string, { on: string; off: string }> = {
 const EMPTY_FORM: BookFormData = {
   title: '',
   author: '',
+  collection: '',
   editorial: '',
   year_of_publication: null,
   isbn: '',
@@ -25,6 +26,12 @@ const EMPTY_FORM: BookFormData = {
 
 type LookupStatus = 'idle' | 'loading' | 'found' | 'not-found';
 type SearchMode = 'isbn' | 'title';
+
+const splitAuthors = (value: string) =>
+  value
+    .split(/[,;]+/)
+    .map((a) => a.trim())
+    .filter(Boolean);
 
 export function BookForm() {
   const navigate = useNavigate();
@@ -43,11 +50,14 @@ export function BookForm() {
   const [titleSearching, setTitleSearching] = useState(false);
   const [publishers, setPublishers] = useState<string[]>([]);
   const [authors, setAuthors] = useState<string[]>([]);
+  const [collections, setCollections] = useState<string[]>([]);
+  const [authorInput, setAuthorInput] = useState('');
 
   useEffect(() => {
     getBooks().then((books) => {
       setPublishers([...new Set(books.map((b) => b.editorial).filter(Boolean))].sort());
-      setAuthors([...new Set(books.map((b) => b.author).filter(Boolean))].sort());
+      setAuthors([...new Set(books.flatMap((b) => splitAuthors(b.author)))].sort());
+      setCollections([...new Set(books.map((b) => b.collection).filter(Boolean))].sort());
     });
   }, []);
 
@@ -59,6 +69,7 @@ export function BookForm() {
         setForm({
           title: book.title,
           author: book.author,
+          collection: book.collection,
           editorial: book.editorial,
           year_of_publication: book.year_of_publication,
           isbn: book.isbn,
@@ -116,14 +127,39 @@ export function BookForm() {
       tags: prev.tags.includes(tag) ? prev.tags.filter((t) => t !== tag) : [...prev.tags, tag],
     }));
 
+  const addAuthor = (rawAuthor: string) => {
+    const newAuthor = rawAuthor.trim();
+    if (!newAuthor) return;
+    const current = splitAuthors(form.author);
+    const exists = current.some((a) => a.toLowerCase() === newAuthor.toLowerCase());
+    if (exists) {
+      setAuthorInput('');
+      return;
+    }
+    setForm((prev) => ({ ...prev, author: [...current, newAuthor].join('; ') }));
+    setAuthorInput('');
+  };
+
+  const removeAuthor = (authorToRemove: string) => {
+    const current = splitAuthors(form.author);
+    setForm((prev) => ({
+      ...prev,
+      author: current.filter((a) => a !== authorToRemove).join('; '),
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
+      const payload = {
+        ...form,
+        author: splitAuthors(form.author).join('; '),
+      };
       if (isEditing && id) {
-        await updateBook(parseInt(id), form);
+        await updateBook(parseInt(id), payload);
       } else {
-        await createBook(form);
+        await createBook(payload);
       }
       navigate('/');
     } catch {
@@ -286,16 +322,67 @@ export function BookForm() {
           {/* Author */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Author</label>
-            <input
-              type="text"
-              list="authors-list"
-              value={form.author}
-              onChange={(e) => setForm((prev) => ({ ...prev, author: e.target.value }))}
-              placeholder="Author name"
-              className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                list="authors-list"
+                value={authorInput}
+                onChange={(e) => setAuthorInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ',') {
+                    e.preventDefault();
+                    addAuthor(authorInput);
+                  }
+                }}
+                placeholder="Add author and press Enter"
+                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <button
+                type="button"
+                onClick={() => addAuthor(authorInput)}
+                className="shrink-0 bg-white border border-gray-300 text-gray-700 px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-50"
+              >
+                Add
+              </button>
+            </div>
+            {splitAuthors(form.author).length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {splitAuthors(form.author).map((author) => (
+                  <span
+                    key={author}
+                    className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200"
+                  >
+                    {author}
+                    <button
+                      type="button"
+                      onClick={() => removeAuthor(author)}
+                      className="text-indigo-500 hover:text-indigo-700 leading-none"
+                      aria-label={`Remove ${author}`}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
             <datalist id="authors-list">
               {authors.map((a) => <option key={a} value={a} />)}
+            </datalist>
+          </div>
+
+          {/* Collection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Collection</label>
+            <input
+              type="text"
+              list="collections-list"
+              value={form.collection}
+              onChange={(e) => setForm((prev) => ({ ...prev, collection: e.target.value }))}
+              placeholder="e.g. Favorites, Art, Philosophy"
+              className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <datalist id="collections-list">
+              {collections.map((c) => <option key={c} value={c} />)}
             </datalist>
           </div>
 

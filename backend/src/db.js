@@ -1,13 +1,14 @@
-const { DatabaseSync } = require('node:sqlite');
-const path = require('path');
+const { DatabaseSync } = require("node:sqlite");
+const path = require("path");
 
-const db = new DatabaseSync(path.join(__dirname, '../books.db'));
+const db = new DatabaseSync(path.join(__dirname, "../books.db"));
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS books (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT NOT NULL,
     author TEXT DEFAULT '',
+    collection TEXT DEFAULT '',
     editorial TEXT DEFAULT '',
     year_of_publication INTEGER,
     isbn TEXT DEFAULT '',
@@ -26,6 +27,12 @@ try {
 
 try {
   db.exec(`ALTER TABLE books ADD COLUMN description TEXT DEFAULT NULL`);
+} catch {
+  // column already exists
+}
+
+try {
+  db.exec(`ALTER TABLE books ADD COLUMN collection TEXT DEFAULT ''`);
 } catch {
   // column already exists
 }

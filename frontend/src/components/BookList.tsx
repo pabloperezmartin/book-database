@@ -5,6 +5,9 @@ import { BookCard } from './BookCard';
 
 const ALL_TAGS = ['Documentary', 'Portrait', 'Nudity', 'Fashion'];
 
+type SortField = 'title' | 'author' | 'collection' | 'year_of_publication' | 'created_at';
+type SortDir = 'asc' | 'desc';
+
 export function BookList() {
   const navigate = useNavigate();
   const [books, setBooks] = useState<Book[]>([]);
@@ -12,6 +15,8 @@ export function BookList() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [filterTag, setFilterTag] = useState('');
+  const [sortField, setSortField] = useState<SortField>('created_at');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
 
   useEffect(() => {
     getBooks()
@@ -22,27 +27,59 @@ export function BookList() {
 
   const handleDeleted = (id: number) => setBooks((prev) => prev.filter((b) => b.id !== id));
 
-  const filtered = books.filter((book) => {
-    const q = search.toLowerCase();
-    const matchesSearch =
-      !search ||
-      book.title.toLowerCase().includes(q) ||
-      book.author.toLowerCase().includes(q) ||
-      book.isbn.includes(q);
-    const matchesTag = !filterTag || book.tags.includes(filterTag);
-    return matchesSearch && matchesTag;
-  });
+  const filtered = books
+    .filter((book) => {
+      const q = search.toLowerCase();
+      const matchesSearch =
+        !search ||
+        book.title.toLowerCase().includes(q) ||
+        book.author.toLowerCase().includes(q) ||
+        book.collection.toLowerCase().includes(q) ||
+        book.isbn.includes(q);
+      const matchesTag = !filterTag || book.tags.includes(filterTag);
+      return matchesSearch && matchesTag;
+    })
+    .sort((a, b) => {
+      let aVal: string | number = a[sortField] ?? '';
+      let bVal: string | number = b[sortField] ?? '';
+      if (typeof aVal === 'string') aVal = aVal.toLowerCase();
+      if (typeof bVal === 'string') bVal = bVal.toLowerCase();
+      if (aVal < bVal) return sortDir === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
 
   return (
     <div>
       <div className="sticky top-[56px] bg-gray-50 pt-2 pb-3 z-10">
         <input
           type="text"
-          placeholder="Search by title, author or ISBN…"
+          placeholder="Search by title, author, collection or ISBN…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
         />
+        <div className="flex gap-2 mt-2">
+          Order by
+          <select
+            value={sortField}
+            onChange={(e) => setSortField(e.target.value as SortField)}
+            className="flex-1 border border-gray-300 rounded-xl px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="created_at">Date added</option>
+            <option value="title">Title</option>
+            <option value="author">Author</option>
+            <option value="collection">Collection</option>
+            <option value="year_of_publication">Year</option>
+          </select>
+          <button
+            onClick={() => setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))}
+            title={sortDir === 'asc' ? 'Ascending' : 'Descending'}
+            className="border border-gray-300 rounded-xl px-3 py-1.5 text-sm bg-white hover:border-gray-400 transition-colors"
+          >
+            {sortDir === 'asc' ? '↑' : '↓'}
+          </button>
+        </div>
         <div className="flex gap-2 mt-2 overflow-x-auto pb-1 scrollbar-none">
           <button
             onClick={() => setFilterTag('')}

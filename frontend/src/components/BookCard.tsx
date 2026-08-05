@@ -31,16 +31,17 @@ export function BookCard({ book, onDeleted }: BookCardProps) {
             <p className="text-sm text-gray-500 mt-0.5">{book.author}</p>
           )}
           <div className="flex flex-wrap items-center gap-x-2 mt-1 text-xs text-gray-400">
+            {book.collection && <span className="font-medium text-indigo-500">{book.collection}</span>}
             {book.editorial && <span>{book.editorial}</span>}
             {book.year_of_publication && (
               <>
-                {book.editorial && <span>·</span>}
+                {(book.collection || book.editorial) && <span>·</span>}
                 <span>{book.year_of_publication}</span>
               </>
             )}
             {book.isbn && (
               <>
-                {(book.editorial || book.year_of_publication) && <span>·</span>}
+                {(book.collection || book.editorial || book.year_of_publication) && <span>·</span>}
                 <span className="font-mono">{book.isbn}</span>
               </>
             )}

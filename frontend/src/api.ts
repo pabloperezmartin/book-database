@@ -2,6 +2,7 @@ export interface Book {
   id: number;
   title: string;
   author: string;
+  collection: string;
   editorial: string;
   year_of_publication: number | null;
   isbn: string;

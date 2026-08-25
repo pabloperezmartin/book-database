@@ -9,6 +9,7 @@ db.exec(`
     title TEXT NOT NULL,
     author TEXT DEFAULT '',
     collection TEXT DEFAULT '',
+    type TEXT DEFAULT '',
     editorial TEXT DEFAULT '',
     year_of_publication INTEGER,
     isbn TEXT DEFAULT '',
@@ -33,6 +34,12 @@ try {
 
 try {
   db.exec(`ALTER TABLE books ADD COLUMN collection TEXT DEFAULT ''`);
+} catch {
+  // column already exists
+}
+
+try {
+  db.exec(`ALTER TABLE books ADD COLUMN type TEXT DEFAULT ''`);
 } catch {
   // column already exists
 }

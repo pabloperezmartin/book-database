@@ -4,6 +4,7 @@ import { createBook, updateBook, getBook, getBooks, lookupISBN, searchByTitle, T
 import { BarcodeScanner } from './BarcodeScanner';
 
 const TAGS = ['Documentary', 'Portrait', 'Nudity', 'Fashion'] as const;
+const BOOK_TYPES = ['Fotolibro', 'Catalogo', 'Magazine', 'Manual', 'Monografia', 'Literatura'] as const;
 
 const TAG_COLORS: Record<string, { on: string; off: string }> = {
   Documentary: { on: 'bg-blue-100 text-blue-800 border-blue-300', off: 'bg-white text-gray-500 border-gray-300' },
@@ -16,6 +17,7 @@ const EMPTY_FORM: BookFormData = {
   title: '',
   author: '',
   collection: '',
+  type: '',
   editorial: '',
   year_of_publication: null,
   isbn: '',
@@ -70,6 +72,7 @@ export function BookForm() {
           title: book.title,
           author: book.author,
           collection: book.collection,
+          type: book.type,
           editorial: book.editorial,
           year_of_publication: book.year_of_publication,
           isbn: book.isbn,
@@ -384,6 +387,21 @@ export function BookForm() {
             <datalist id="collections-list">
               {collections.map((c) => <option key={c} value={c} />)}
             </datalist>
+          </div>
+
+          {/* Type */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+            <select
+              value={form.type}
+              onChange={(e) => setForm((prev) => ({ ...prev, type: e.target.value }))}
+              className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="">Select a type</option>
+              {BOOK_TYPES.map((bookType) => (
+                <option key={bookType} value={bookType}>{bookType}</option>
+              ))}
+            </select>
           </div>
 
           {/* Editorial */}

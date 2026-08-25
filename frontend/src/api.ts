@@ -3,6 +3,7 @@ export interface Book {
   title: string;
   author: string;
   collection: string;
+  type: string;
   editorial: string;
   year_of_publication: number | null;
   isbn: string;

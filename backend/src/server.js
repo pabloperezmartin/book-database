@@ -33,6 +33,7 @@ app.post("/api/books", (req, res) => {
     title,
     author,
     collection,
+    type,
     editorial,
     year_of_publication,
     isbn,
@@ -45,14 +46,15 @@ app.post("/api/books", (req, res) => {
   const result = db
     .prepare(
       `
-    INSERT INTO books (title, author, collection, editorial, year_of_publication, isbn, tags, cover_image, description)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO books (title, author, collection, type, editorial, year_of_publication, isbn, tags, cover_image, description)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `,
     )
     .run(
       title,
       author || "",
       collection || "",
+      type || "",
       editorial || "",
       year_of_publication || null,
       isbn || "",
@@ -72,6 +74,7 @@ app.put("/api/books/:id", (req, res) => {
     title,
     author,
     collection,
+    type,
     editorial,
     year_of_publication,
     isbn,
@@ -89,7 +92,7 @@ app.put("/api/books/:id", (req, res) => {
   db.prepare(
     `
     UPDATE books
-    SET title = ?, author = ?, collection = ?, editorial = ?, year_of_publication = ?,
+    SET title = ?, author = ?, collection = ?, type = ?, editorial = ?, year_of_publication = ?,
         isbn = ?, tags = ?, cover_image = ?, description = ?, updated_at = datetime('now')
     WHERE id = ?
   `,
@@ -97,6 +100,7 @@ app.put("/api/books/:id", (req, res) => {
     title,
     author || "",
     collection || "",
+    type || "",
     editorial || "",
     year_of_publication || null,
     isbn || "",

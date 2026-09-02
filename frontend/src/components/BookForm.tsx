@@ -1,16 +1,20 @@
-import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { createBook, updateBook, getBook, getBooks, lookupISBN, searchByTitle, TitleSearchResult, BookFormData } from '../api';
 import { BarcodeScanner } from './BarcodeScanner';
 
-const TAGS = ['Documentary', 'Portrait', 'Nudity', 'Fashion'] as const;
-const BOOK_TYPES = ['Fotolibro', 'Catalogo', 'Magazine', 'Manual', 'Monografia', 'Literatura'] as const;
+const TAGS = ['Conceptual', 'Documentary', 'Fashion', 'Landscape', 'Nudity', 'Portrait', 'StreetPhotography', 'WarPhotography'] as const;
+const BOOK_TYPES = ['Catalog', 'Literature', 'Magazine', 'Monograph', 'Photobook', 'Tutorial'] as const;
 
 const TAG_COLORS: Record<string, { on: string; off: string }> = {
+  Conceptual: { on: 'bg-blue-100 text-blue-800 border-blue-300', off: 'bg-white text-gray-500 border-gray-300' },
   Documentary: { on: 'bg-blue-100 text-blue-800 border-blue-300', off: 'bg-white text-gray-500 border-gray-300' },
-  Portrait:    { on: 'bg-green-100 text-green-800 border-green-300', off: 'bg-white text-gray-500 border-gray-300' },
-  Nudity:      { on: 'bg-red-100 text-red-800 border-red-300', off: 'bg-white text-gray-500 border-gray-300' },
   Fashion:     { on: 'bg-purple-100 text-purple-800 border-purple-300', off: 'bg-white text-gray-500 border-gray-300' },
+  Nudity:      { on: 'bg-red-100 text-red-800 border-red-300', off: 'bg-white text-gray-500 border-gray-300' },
+  Landscape:   { on: 'bg-yellow-100 text-yellow-800 border-yellow-300', off: 'bg-white text-gray-500 border-gray-300' },
+  Portrait:    { on: 'bg-green-100 text-green-800 border-green-300', off: 'bg-white text-gray-500 border-gray-300' },
+  StreetPhotography: { on: 'bg-purple-100 text-purple-800 border-purple-300', off: 'bg-white text-gray-500 border-gray-300' },
+  WarPhotography:    { on: 'bg-red-100 text-red-800 border-red-300', off: 'bg-white text-gray-500 border-gray-300' },
 };
 
 const EMPTY_FORM: BookFormData = {
@@ -29,6 +33,9 @@ const EMPTY_FORM: BookFormData = {
 type LookupStatus = 'idle' | 'loading' | 'found' | 'not-found';
 type SearchMode = 'isbn' | 'title';
 
+/** Which submit button was pressed: finish and go back to the list, or save and start a fresh form. */
+type SaveIntent = 'finish' | 'another';
+
 const splitAuthors = (value: string) =>
   value
     .split(/[,;]+/)
@@ -37,13 +44,21 @@ const splitAuthors = (value: string) =>
 
 export function BookForm() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { id } = useParams<{ id: string }>();
   const isEditing = !!id;
+
+  const goBack = () => {
+    const from = (location.state as { from?: string } | null)?.from;
+    navigate(from ?? '/');
+  };
 
   const [form, setForm] = useState<BookFormData>(EMPTY_FORM);
   const [showScanner, setShowScanner] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState<SaveIntent | null>(null);
+  const [addedCount, setAddedCount] = useState(0);
+  const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [fetching, setFetching] = useState(false);
   const [lookupStatus, setLookupStatus] = useState<LookupStatus>('idle');
   const [searchMode, setSearchMode] = useState<SearchMode>('isbn');
@@ -55,13 +70,16 @@ export function BookForm() {
   const [collections, setCollections] = useState<string[]>([]);
   const [authorInput, setAuthorInput] = useState('');
 
-  useEffect(() => {
-    getBooks().then((books) => {
-      setPublishers([...new Set(books.map((b) => b.editorial).filter(Boolean))].sort());
-      setAuthors([...new Set(books.flatMap((b) => splitAuthors(b.author)))].sort());
-      setCollections([...new Set(books.map((b) => b.collection).filter(Boolean))].sort());
-    });
+  const loadSuggestions = useCallback(async () => {
+    const books = await getBooks();
+    setPublishers([...new Set(books.map((b) => b.editorial).filter(Boolean))].sort());
+    setAuthors([...new Set(books.flatMap((b) => splitAuthors(b.author)))].sort());
+    setCollections([...new Set(books.map((b) => b.collection).filter(Boolean))].sort());
   }, []);
+
+  useEffect(() => {
+    loadSuggestions();
+  }, [loadSuggestions]);
 
   useEffect(() => {
     if (!isEditing || !id) return;
@@ -151,9 +169,22 @@ export function BookForm() {
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  /** Clears the form and every lookup/search bit of state, ready for a fresh entry. */
+  const resetForm = () => {
+    setForm(EMPTY_FORM);
+    setAuthorInput('');
+    setSearchMode('isbn');
+    setLookupStatus('idle');
+    setTitleQuery('');
+    setTitleResults([]);
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setSaving(true);
+    const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
+    const intent: SaveIntent = submitter?.value === 'another' ? 'another' : 'finish';
+
+    setSaving(intent);
     try {
       const payload = {
         ...form,
@@ -164,11 +195,21 @@ export function BookForm() {
       } else {
         await createBook(payload);
       }
-      navigate('/');
+
+      if (intent === 'another') {
+        setLastSaved(payload.title);
+        setAddedCount((n) => n + 1);
+        resetForm();
+        // Pick up any publisher/author/collection the book we just saved introduced.
+        await loadSuggestions();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        goBack();
+      }
     } catch {
       alert('Failed to save the book. Please try again.');
     } finally {
-      setSaving(false);
+      setSaving(null);
     }
   };
 
@@ -191,7 +232,7 @@ export function BookForm() {
         <div className="flex items-center gap-3 mb-6">
           <button
             type="button"
-            onClick={() => navigate('/')}
+            onClick={() => goBack()}
             className="text-indigo-600 hover:text-indigo-800 font-medium text-sm"
           >
             ← Back
@@ -199,7 +240,33 @@ export function BookForm() {
           <h2 className="text-xl font-bold text-gray-800">
             {isEditing ? 'Edit Book' : 'Add New Book'}
           </h2>
+          {addedCount > 0 && (
+            <span className="ml-auto text-xs font-medium text-gray-500 bg-gray-100 rounded-full px-2.5 py-1">
+              {addedCount} added
+            </span>
+          )}
         </div>
+
+        {!isEditing && addedCount > 0 && (
+          <div className="mb-5 flex items-start gap-2 rounded-xl border border-green-200 bg-green-50 px-3 py-2.5">
+            <span className="text-green-600 leading-none mt-0.5">✓</span>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-green-800 leading-snug truncate">
+                Saved{lastSaved ? ` “${lastSaved}”` : ''}
+              </p>
+              <p className="text-xs text-green-700 mt-0.5">
+                Form cleared — ready for the next book.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => goBack()}
+              className="ml-auto shrink-0 text-xs font-medium text-green-800 underline hover:text-green-900"
+            >
+              Done
+            </button>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Book lookup */}
@@ -526,14 +593,31 @@ export function BookForm() {
           </div>
 
           {/* Submit */}
-          <div className="pt-2">
+          <div className="pt-2 space-y-2">
             <button
               type="submit"
-              disabled={saving}
+              value="finish"
+              disabled={!!saving}
               className="w-full bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {saving ? 'Saving…' : isEditing ? 'Update Book' : 'Add Book'}
+              {saving === 'finish' ? 'Saving…' : isEditing ? 'Update Book' : 'Add Book'}
             </button>
+            {!isEditing && (
+              <>
+                <button
+                  type="submit"
+                  value="another"
+                  disabled={!!saving}
+                  className="w-full bg-white border-2 border-indigo-600 text-indigo-700 py-3 rounded-xl font-semibold hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {saving === 'another' ? 'Saving…' : '+ Add Another Book'}
+                </button>
+                <p className="text-xs text-gray-400 text-center">
+                  “Add Book” saves and returns to the list. “Add Another Book” saves and clears the
+                  form so you can keep adding.
+                </p>
+              </>
+            )}
           </div>
         </form>
       </div>

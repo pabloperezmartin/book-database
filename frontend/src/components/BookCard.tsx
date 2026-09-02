@@ -1,11 +1,15 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Book, deleteBook } from '../api';
 
 const TAG_COLORS: Record<string, string> = {
+  Conceptual: 'bg-blue-100 text-blue-700',
   Documentary: 'bg-blue-100 text-blue-700',
-  Portrait: 'bg-green-100 text-green-700',
-  Nudity: 'bg-red-100 text-red-700',
   Fashion: 'bg-purple-100 text-purple-700',
+  Nudity: 'bg-red-100 text-red-700',
+  Landscape: 'bg-yellow-100 text-yellow-700',
+  Portrait: 'bg-green-100 text-green-700',
+  StreetPhotography: 'bg-purple-100 text-purple-700',
+  WarPhotography: 'bg-red-100 text-red-700',
 };
 
 interface BookCardProps {
@@ -15,6 +19,7 @@ interface BookCardProps {
 
 export function BookCard({ book, onDeleted }: BookCardProps) {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleDelete = async () => {
     if (!confirm(`Delete "${book.title}"?`)) return;
@@ -72,7 +77,7 @@ export function BookCard({ book, onDeleted }: BookCardProps) {
         )}
         <div className="flex gap-1 shrink-0 mt-0.5">
           <button
-            onClick={() => navigate(`/edit/${book.id}`)}
+            onClick={() => navigate(`/edit/${book.id}`, { state: { from: `/${location.search}` } })}
             className="text-indigo-500 hover:bg-indigo-50 p-1.5 rounded-lg transition-colors"
             title="Edit"
           >

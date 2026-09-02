@@ -55,6 +55,71 @@ export async function deleteBook(id: number): Promise<void> {
   if (!res.ok && res.status !== 404) throw new Error('Failed to delete book');
 }
 
+// --- Admin -----------------------------------------------------------------
+
+/** Fields whose free-text values can be managed in bulk from the Admin page. */
+export type AdminField = 'editorial' | 'author' | 'type' | 'collection' | 'tags';
+
+export interface FieldValue {
+  value: string;
+  count: number;
+}
+
+export interface CleanupGroup {
+  field: AdminField;
+  canonical: string;
+  /** Why the variants differ: 'whitespace', 'accents', or 'whitespace + accents'. */
+  reason: string;
+  variants: FieldValue[];
+  affected: number;
+}
+
+const postJSON = async <T>(path: string, body: unknown): Promise<T> => {
+  const res = await fetch(`${BASE}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || 'Request failed');
+  return data as T;
+};
+
+export async function getFieldValues(field: AdminField): Promise<FieldValue[]> {
+  const res = await fetch(`${BASE}/admin/values/${field}`);
+  if (!res.ok) throw new Error('Failed to load values');
+  return (await res.json()).values;
+}
+
+/** Renames `from` to `to` across all books; merges if `to` already exists. */
+export async function renameFieldValue(
+  field: AdminField,
+  from: string,
+  to: string
+): Promise<{ updated: number; merged: boolean }> {
+  return postJSON(`/admin/values/${field}/rename`, { from, to });
+}
+
+/** Removes the value from every book: blanks scalars, drops list entries. */
+export async function deleteFieldValue(
+  field: AdminField,
+  value: string
+): Promise<{ updated: number }> {
+  return postJSON(`/admin/values/${field}/delete`, { value });
+}
+
+export async function getCleanupGroups(): Promise<CleanupGroup[]> {
+  const res = await fetch(`${BASE}/admin/cleanup`);
+  if (!res.ok) throw new Error('Failed to load cleanup suggestions');
+  return (await res.json()).groups;
+}
+
+export async function fixCleanup(
+  field?: AdminField
+): Promise<{ updated: number; fields: AdminField[] }> {
+  return postJSON('/admin/cleanup/fix', field ? { field } : {});
+}
+
 export interface TitleSearchResult {
   title: string;
   author: string;

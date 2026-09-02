@@ -1,7 +1,10 @@
 const { DatabaseSync } = require("node:sqlite");
 const path = require("path");
 
-const db = new DatabaseSync(path.join(__dirname, "../books.db"));
+// DB_PATH lets tests point at a throwaway copy instead of the real library.
+const db = new DatabaseSync(
+  process.env.DB_PATH || path.join(__dirname, "../books.db"),
+);
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS books (

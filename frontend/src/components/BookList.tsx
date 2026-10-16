@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { Book, getBooks } from '../api';
 import { BookCard } from './BookCard';
+import { BookShelf } from './BookShelf';
 
 const ALL_TAGS = ['Conceptual', 'Documentary', 'Fashion', 'Landscape', 'Nudity', 'Portrait', 'StreetPhotography', 'WarPhotography'] as const;
 
@@ -47,6 +48,7 @@ export function BookList() {
   const yearTo = params.get('to') ?? '';
   const sortField = (params.get('sort') as SortField) || 'created_at';
   const sortDir = (params.get('dir') as SortDir) || 'desc';
+  const viewMode = params.get('view') === 'shelf' ? 'shelf' : 'list';
 
   const setParam = (key: string, value: string) =>
     setParams((prev) => {
@@ -197,6 +199,30 @@ export function BookList() {
           >
             {sortDir === 'asc' ? '↑' : '↓'}
           </button>
+          <div className="border border-gray-300 rounded-xl overflow-hidden flex shadow-sm ml-1">
+            <button
+              onClick={() => setParam('view', '')}
+              title="List view"
+              className={`w-8 h-8 flex items-center justify-center transition-colors ${
+                viewMode === 'list' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-400 hover:bg-gray-50'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            <button
+              onClick={() => setParam('view', 'shelf')}
+              title="Shelf view"
+              className={`w-8 h-8 flex items-center justify-center transition-colors ${
+                viewMode === 'shelf' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-400 hover:bg-gray-50'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
+              </svg>
+            </button>
+          </div>
         </div>
         {/* Field filters — each dropdown is omitted when the data has no values for it */}
         <div className="grid grid-cols-2 gap-2 mt-2">
@@ -342,12 +368,16 @@ export function BookList() {
         </div>
       )}
 
-      {!loading && !error && filtered.length > 0 && (
+      {!loading && !error && filtered.length > 0 && viewMode === 'list' && (
         <div className="space-y-2.5 mt-2 pb-20">
           {filtered.map((book) => (
             <BookCard key={book.id} book={book} onDeleted={handleDeleted} listIds={filtered.map(b => b.id)} />
           ))}
         </div>
+      )}
+
+      {!loading && !error && filtered.length > 0 && viewMode === 'shelf' && (
+        <BookShelf books={filtered} listIds={filtered.map(b => b.id)} />
       )}
 
       <button

@@ -28,13 +28,14 @@ const EMPTY_FORM: BookFormData = {
   tags: [],
   cover_image: null,
   description: null,
+  prize: '',
 };
 
 type LookupStatus = 'idle' | 'loading' | 'found' | 'not-found';
 type SearchMode = 'isbn' | 'title';
 
-/** Which submit button was pressed: finish and go back to the list, or save and start a fresh form. */
-type SaveIntent = 'finish' | 'another';
+/** Which submit button was pressed: finish and go back to the list, save and start a fresh form, or save and advance to the next book in the list. */
+type SaveIntent = 'finish' | 'another' | 'next' | 'prev';
 
 const splitAuthors = (value: string) =>
   value
@@ -48,10 +49,15 @@ export function BookForm() {
   const { id } = useParams<{ id: string }>();
   const isEditing = !!id;
 
-  const goBack = () => {
-    const from = (location.state as { from?: string } | null)?.from;
-    navigate(from ?? '/');
-  };
+  const state = location.state as { from?: string; listIds?: number[] } | null;
+  const listIds = state?.listIds ?? [];
+  const currentIndex = listIds.indexOf(parseInt(id ?? ''));
+  const prevId = currentIndex > 0 ? listIds[currentIndex - 1] : null;
+  const nextId = currentIndex >= 0 && currentIndex < listIds.length - 1 ? listIds[currentIndex + 1] : null;
+
+  const goBack = () => navigate(state?.from ?? '/');
+  const goPrev = () => navigate(`/edit/${prevId}`, { state: { from: state?.from, listIds } });
+  const goNext = () => navigate(`/edit/${nextId}`, { state: { from: state?.from, listIds } });
 
   const [form, setForm] = useState<BookFormData>(EMPTY_FORM);
   const [showScanner, setShowScanner] = useState(false);
@@ -68,6 +74,7 @@ export function BookForm() {
   const [publishers, setPublishers] = useState<string[]>([]);
   const [authors, setAuthors] = useState<string[]>([]);
   const [collections, setCollections] = useState<string[]>([]);
+  const [prizes, setPrizes] = useState<string[]>([]);
   const [authorInput, setAuthorInput] = useState('');
 
   const loadSuggestions = useCallback(async () => {
@@ -75,6 +82,7 @@ export function BookForm() {
     setPublishers([...new Set(books.map((b) => b.editorial).filter(Boolean))].sort());
     setAuthors([...new Set(books.flatMap((b) => splitAuthors(b.author)))].sort());
     setCollections([...new Set(books.map((b) => b.collection).filter(Boolean))].sort());
+    setPrizes([...new Set(books.map((b) => b.prize?.split('#')[0]).filter(Boolean))].sort());
   }, []);
 
   useEffect(() => {
@@ -97,6 +105,7 @@ export function BookForm() {
           tags: book.tags,
           cover_image: book.cover_image,
           description: book.description,
+          prize: book.prize || '',
         })
       )
       .finally(() => setFetching(false));
@@ -182,7 +191,10 @@ export function BookForm() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
-    const intent: SaveIntent = submitter?.value === 'another' ? 'another' : 'finish';
+    const intent: SaveIntent =
+      submitter?.value === 'another' ? 'another' :
+      submitter?.value === 'next' ? 'next' :
+      submitter?.value === 'prev' ? 'prev' : 'finish';
 
     setSaving(intent);
     try {
@@ -200,9 +212,12 @@ export function BookForm() {
         setLastSaved(payload.title);
         setAddedCount((n) => n + 1);
         resetForm();
-        // Pick up any publisher/author/collection the book we just saved introduced.
         await loadSuggestions();
         window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else if (intent === 'next') {
+        goNext();
+      } else if (intent === 'prev') {
+        goPrev();
       } else {
         goBack();
       }
@@ -240,6 +255,11 @@ export function BookForm() {
           <h2 className="text-xl font-bold text-gray-800">
             {isEditing ? 'Edit Book' : 'Add New Book'}
           </h2>
+          {isEditing && listIds.length > 0 && (
+            <span className="ml-auto text-xs font-medium text-gray-500 bg-gray-100 rounded-full px-2.5 py-1">
+              {currentIndex + 1} of {listIds.length}
+            </span>
+          )}
           {addedCount > 0 && (
             <span className="ml-auto text-xs font-medium text-gray-500 bg-gray-100 rounded-full px-2.5 py-1">
               {addedCount} added
@@ -535,6 +555,41 @@ export function BookForm() {
             </div>
           </div>
 
+          {/* Prize */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Prize</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                list="prizes-list"
+                placeholder="Name / Award"
+                value={form.prize.split('#')[0] ?? ''}
+                onChange={(e) => {
+                  const year = form.prize.split('#')[1] ?? '';
+                  const val = e.target.value;
+                  setForm((prev) => ({ ...prev, prize: val || year ? `${val}#${year}` : '' }));
+                }}
+                className="flex-1 border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <datalist id="prizes-list">
+                {prizes.map((p) => <option key={p} value={p} />)}
+              </datalist>
+              <input
+                type="number"
+                placeholder="Year"
+                min="1900"
+                max="2099"
+                value={form.prize.split('#')[1] ?? ''}
+                onChange={(e) => {
+                  const val = form.prize.split('#')[0] ?? '';
+                  const year = e.target.value;
+                  setForm((prev) => ({ ...prev, prize: val || year ? `${val}#${year}` : '' }));
+                }}
+                className="w-28 border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          </div>
+
           {/* Description */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
@@ -602,6 +657,26 @@ export function BookForm() {
             >
               {saving === 'finish' ? 'Saving…' : isEditing ? 'Update Book' : 'Add Book'}
             </button>
+            {isEditing && (prevId !== null || nextId !== null) && (
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="submit"
+                  value="prev"
+                  disabled={!!saving || prevId === null}
+                  className="w-full bg-white border-2 border-indigo-600 text-indigo-700 py-2.5 rounded-xl font-semibold hover:bg-indigo-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-sm"
+                >
+                  {saving === 'prev' ? 'Saving…' : '← Save & Previous'}
+                </button>
+                <button
+                  type="submit"
+                  value="next"
+                  disabled={!!saving || nextId === null}
+                  className="w-full bg-white border-2 border-indigo-600 text-indigo-700 py-2.5 rounded-xl font-semibold hover:bg-indigo-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-sm"
+                >
+                  {saving === 'next' ? 'Saving…' : 'Save & Next →'}
+                </button>
+              </div>
+            )}
             {!isEditing && (
               <>
                 <button

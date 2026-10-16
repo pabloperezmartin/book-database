@@ -10,6 +10,7 @@ export interface Book {
   tags: string[];
   cover_image: string | null;
   description: string | null;
+  prize: string;
   created_at: string;
   updated_at: string;
 }

@@ -152,32 +152,48 @@ export function BookList() {
 
   return (
     <div>
-      <div className="sticky top-[56px] bg-gray-50 pt-2 pb-3 z-10">
-        <input
-          type="text"
-          placeholder="Search by title, author, collection or ISBN…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <div className="flex gap-2 mt-2">
-          Order by
+      <div className="sticky top-[56px] bg-gray-50/95 backdrop-blur-sm pt-2 pb-3 z-10 border-b border-gray-200/60">
+        <div className="relative">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Search by title, author, collection or ISBN…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full border border-gray-300 rounded-xl pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white shadow-sm placeholder:text-gray-400"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-2 mt-2.5">
+          <span className="text-xs text-gray-500 shrink-0 font-medium">Sort</span>
           <select
             value={sortField}
             onChange={(e) => setSortField(e.target.value as SortField)}
-            className="flex-1 border border-gray-300 rounded-xl px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="flex-1 border border-gray-300 rounded-xl px-3 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
           >
             <option value="created_at">Date added</option>
             <option value="title">Title</option>
             <option value="author">Author</option>
             <option value="collection">Collection</option>
             <option value="type">Type</option>
-            <option value="editorial">Editorial / Publisher</option>
+            <option value="editorial">Publisher</option>
             <option value="year_of_publication">Year</option>
           </select>
           <button
             onClick={() => setSortDir(sortDir === 'asc' ? 'desc' : 'asc')}
             title={sortDir === 'asc' ? 'Ascending' : 'Descending'}
-            className="border border-gray-300 rounded-xl px-3 py-1.5 text-sm bg-white hover:border-gray-400 transition-colors"
+            className="border border-gray-300 rounded-xl w-8 h-8 flex items-center justify-center text-sm bg-white hover:border-gray-400 hover:bg-gray-50 transition-colors shadow-sm"
           >
             {sortDir === 'asc' ? '↑' : '↓'}
           </button>
@@ -248,13 +264,13 @@ export function BookList() {
           </div>
         </div>
 
-        <div className="flex gap-2 mt-2 overflow-x-auto pb-1 scrollbar-none">
+        <div className="flex gap-1.5 mt-2.5 overflow-x-auto pb-1 scrollbar-none">
           <button
             onClick={() => setFilterTag('')}
-            className={`shrink-0 px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+            className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${
               !filterTag
-                ? 'bg-indigo-600 text-white border-indigo-600'
-                : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'bg-white text-gray-500 ring-1 ring-gray-200 hover:ring-gray-300 hover:text-gray-700'
             }`}
           >
             All
@@ -263,10 +279,10 @@ export function BookList() {
             <button
               key={tag}
               onClick={() => setFilterTag(filterTag === tag ? '' : tag)}
-              className={`shrink-0 px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${
                 filterTag === tag
-                  ? 'bg-indigo-600 text-white border-indigo-600'
-                  : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'bg-white text-gray-500 ring-1 ring-gray-200 hover:ring-gray-300 hover:text-gray-700'
               }`}
             >
               {tag}
@@ -274,7 +290,7 @@ export function BookList() {
           ))}
         </div>
         {!loading && !error && (
-          <div className="flex items-center gap-2 mt-2">
+          <div className="flex items-center justify-between mt-2.5">
             <p className="text-xs text-gray-500">
               <span className="font-semibold text-gray-700">{filtered.length}</span>
               {isFiltering && <> of {books.length}</>} {books.length === 1 ? 'book' : 'books'}
@@ -283,9 +299,9 @@ export function BookList() {
             {isFiltering && (
               <button
                 onClick={clearFilters}
-                className="text-xs font-medium text-indigo-600 hover:text-indigo-800 underline"
+                className="text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
               >
-                Clear filters
+                Clear all filters
               </button>
             )}
           </div>
@@ -293,46 +309,55 @@ export function BookList() {
       </div>
 
       {loading && (
-        <div className="flex justify-center items-center h-48">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+        <div className="flex flex-col items-center justify-center h-48 gap-3">
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-indigo-200 border-t-indigo-600" />
+          <p className="text-sm text-gray-400">Loading your library…</p>
         </div>
       )}
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mt-3 text-sm text-red-700">
-          {error}
+        <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4">
+          <div className="flex gap-3">
+            <svg className="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M12 3a9 9 0 100 18 9 9 0 000-18z" />
+            </svg>
+            <p className="text-sm text-red-700">{error}</p>
+          </div>
         </div>
       )}
 
       {!loading && !error && filtered.length === 0 && (
-        <div className="text-center py-16 text-gray-400">
-          <p className="text-5xl mb-3">📚</p>
-          <p className="font-medium text-gray-500">
-            {books.length === 0 ? 'No books yet' : 'No books match your search'}
+        <div className="text-center py-20">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
+            <span className="text-3xl">📚</span>
+          </div>
+          <p className="font-semibold text-gray-600">
+            {books.length === 0 ? 'No books yet' : 'No books match your filters'}
           </p>
-          {books.length === 0 && (
-            <p className="text-sm mt-1">Tap + to add your first book</p>
-          )}
+          <p className="text-sm text-gray-400 mt-1">
+            {books.length === 0
+              ? 'Tap the + button to add your first book'
+              : 'Try adjusting your search or clearing filters'}
+          </p>
         </div>
       )}
 
       {!loading && !error && filtered.length > 0 && (
-        <div className="space-y-3 mt-1 pb-20">
+        <div className="space-y-2.5 mt-2 pb-20">
           {filtered.map((book) => (
-            <BookCard key={book.id} book={book} onDeleted={handleDeleted} />
+            <BookCard key={book.id} book={book} onDeleted={handleDeleted} listIds={filtered.map(b => b.id)} />
           ))}
-          <p className="text-center text-xs text-gray-400 pt-2">
-            {filtered.length} {filtered.length === 1 ? 'book' : 'books'}
-          </p>
         </div>
       )}
 
       <button
         onClick={() => navigate('/new', { state: { from: `/${location.search}` } })}
-        className="fixed bottom-6 right-6 bg-indigo-600 text-white w-14 h-14 rounded-full shadow-lg text-3xl flex items-center justify-center hover:bg-indigo-700 active:scale-95 transition-all"
+        className="fixed bottom-6 right-6 bg-indigo-600 text-white w-14 h-14 rounded-full shadow-xl text-2xl flex items-center justify-center hover:bg-indigo-700 hover:shadow-2xl hover:scale-105 active:scale-95 transition-all duration-200"
         title="Add new book"
       >
-        +
+        <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+        </svg>
       </button>
     </div>
   );

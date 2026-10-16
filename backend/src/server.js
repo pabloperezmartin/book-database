@@ -40,14 +40,15 @@ app.post("/api/books", (req, res) => {
     tags,
     cover_image,
     description,
+    prize,
   } = req.body;
   if (!title) return res.status(400).json({ error: "Title is required" });
 
   const result = db
     .prepare(
       `
-    INSERT INTO books (title, author, collection, type, editorial, year_of_publication, isbn, tags, cover_image, description)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO books (title, author, collection, type, editorial, year_of_publication, isbn, tags, cover_image, description, prize)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `,
     )
     .run(
@@ -61,6 +62,7 @@ app.post("/api/books", (req, res) => {
       JSON.stringify(tags || []),
       cover_image || null,
       description || null,
+      prize || "",
     );
 
   const book = db
@@ -81,6 +83,7 @@ app.put("/api/books/:id", (req, res) => {
     tags,
     cover_image,
     description,
+    prize,
   } = req.body;
   if (!title) return res.status(400).json({ error: "Title is required" });
 
@@ -93,7 +96,7 @@ app.put("/api/books/:id", (req, res) => {
     `
     UPDATE books
     SET title = ?, author = ?, collection = ?, type = ?, editorial = ?, year_of_publication = ?,
-        isbn = ?, tags = ?, cover_image = ?, description = ?, updated_at = datetime('now')
+        isbn = ?, tags = ?, cover_image = ?, description = ?, prize = ?, updated_at = datetime('now')
     WHERE id = ?
   `,
   ).run(
@@ -107,6 +110,7 @@ app.put("/api/books/:id", (req, res) => {
     JSON.stringify(tags || []),
     cover_image !== undefined ? cover_image : exists.cover_image,
     description !== undefined ? description : exists.description,
+    prize !== undefined ? prize : (exists.prize || ""),
     req.params.id,
   );
 

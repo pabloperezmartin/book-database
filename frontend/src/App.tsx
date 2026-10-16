@@ -4,18 +4,20 @@ import { BookForm } from './components/BookForm';
 import { Admin } from './components/Admin';
 
 const tabClass = ({ isActive }: { isActive: boolean }) =>
-  `px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-    isActive ? 'bg-white text-indigo-700' : 'text-indigo-100 hover:bg-indigo-500'
+  `px-3.5 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
+    isActive
+      ? 'bg-white/95 text-indigo-700 shadow-sm'
+      : 'text-indigo-100 hover:bg-white/15 hover:text-white'
   }`;
 
 export default function App() {
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-indigo-600 text-white px-4 py-3 shadow-md sticky top-0 z-20">
+      <header className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-4 py-3 shadow-md sticky top-0 z-20">
         <div className="max-w-2xl mx-auto flex items-center gap-3">
-          <span className="text-2xl">📚</span>
+          <span className="text-2xl" role="img" aria-label="Books">📚</span>
           <h1 className="text-lg font-bold tracking-tight">Book Library</h1>
-          <nav className="ml-auto flex items-center gap-1">
+          <nav className="ml-auto flex items-center gap-1 bg-indigo-800/30 rounded-full p-0.5">
             <NavLink to="/" end className={tabClass}>
               Library
             </NavLink>

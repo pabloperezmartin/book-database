@@ -97,3 +97,18 @@ Open that `https://` URL on your phone. The first time, ngrok may show a browser
 ## Data Storage
 
 Books are stored in a SQLite database file at `backend/books.db`, created automatically on first run. Each book has: `title`, `author`, `editorial`, `year_of_publication`, `isbn`, `tags`, `created_at`, and `updated_at`.
+
+
+## How to do a Push
+
+1. Set GitHub Token
+
+```bash
+git remote set-url origin https://token@github.com/pabloperezmartin/book-database.git
+```
+
+2. Execute the Push
+
+```bash
+git push
+```

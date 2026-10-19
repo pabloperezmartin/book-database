@@ -15,9 +15,14 @@ const parseBook = (book) => ({
 
 app.get("/api/books", (req, res) => {
   const books = db
-    .prepare("SELECT * FROM books ORDER BY created_at DESC")
+    .prepare(
+      `SELECT id, title, author, collection, type, editorial, year_of_publication,
+              isbn, tags, description, prize, created_at, updated_at,
+              CASE WHEN cover_image IS NOT NULL AND cover_image != '' THEN 1 ELSE 0 END AS has_cover
+       FROM books ORDER BY created_at DESC`
+    )
     .all();
-  res.json(books.map(parseBook));
+  res.json(books.map((b) => ({ ...parseBook(b), has_cover: !!b.has_cover })));
 });
 
 app.get("/api/books/:id", (req, res) => {
@@ -26,6 +31,22 @@ app.get("/api/books/:id", (req, res) => {
     .get(req.params.id);
   if (!book) return res.status(404).json({ error: "Book not found" });
   res.json(parseBook(book));
+});
+
+app.get("/api/books/:id/cover", (req, res) => {
+  const row = db
+    .prepare("SELECT cover_image FROM books WHERE id = ?")
+    .get(req.params.id);
+  if (!row || !row.cover_image) return res.status(404).send();
+
+  const match = row.cover_image.match(/^data:(image\/[^;]+);base64,(.+)$/s);
+  if (!match) return res.status(404).send();
+
+  const [, mime, b64] = match;
+  const buf = Buffer.from(b64, "base64");
+  res.set("Content-Type", mime);
+  res.set("Cache-Control", "public, max-age=86400");
+  res.send(buf);
 });
 
 app.post("/api/books", (req, res) => {

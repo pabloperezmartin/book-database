@@ -9,13 +9,18 @@ export interface Book {
   isbn: string;
   tags: string[];
   cover_image: string | null;
+  has_cover: boolean;
   description: string | null;
   prize: string;
   created_at: string;
   updated_at: string;
 }
 
-export type BookFormData = Omit<Book, 'id' | 'created_at' | 'updated_at'>;
+export function bookCoverUrl(id: number): string {
+  return `${BASE}/books/${id}/cover`;
+}
+
+export type BookFormData = Omit<Book, 'id' | 'has_cover' | 'created_at' | 'updated_at'>;
 
 const BASE = '/api';
 

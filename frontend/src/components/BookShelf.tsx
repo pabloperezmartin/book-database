@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Book } from '../api';
+import { Book, bookCoverUrl } from '../api';
 
 const SPINE_COLORS = [
   'from-indigo-800 to-indigo-900',
@@ -32,7 +32,7 @@ export function BookShelf({ books, listIds }: BookShelfProps) {
   return (
     <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mt-2 pb-20">
       {books.map((book) => {
-        const hasCover = !!book.cover_image;
+        const hasCover = !!book.has_cover;
         return (
           <div
             key={book.id}
@@ -59,9 +59,10 @@ export function BookShelf({ books, listIds }: BookShelfProps) {
               >
                 {hasCover ? (
                   <img
-                    src={book.cover_image!}
+                    src={bookCoverUrl(book.id)}
                     alt=""
                     className="w-full h-full object-cover"
+                    loading="lazy"
                   />
                 ) : (
                   <div

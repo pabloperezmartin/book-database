@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Book, deleteBook } from '../api';
+import { Book, deleteBook, bookCoverUrl } from '../api';
 
 const TAG_COLORS: Record<string, string> = {
   Conceptual: 'bg-sky-50 text-sky-700 ring-sky-200',
@@ -39,12 +39,13 @@ export function BookCard({ book, onDeleted, listIds }: BookCardProps) {
     >
       <div className="flex">
         {/* Cover image column */}
-        {book.cover_image && (
+        {book.has_cover && (
           <div className="shrink-0 w-20 sm:w-24">
             <img
-              src={book.cover_image}
+              src={bookCoverUrl(book.id)}
               alt=""
               className="w-full h-full object-cover"
+              loading="lazy"
             />
           </div>
         )}

@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { createBook, updateBook, getBook, getBooks, lookupISBN, searchByTitle, TitleSearchResult, BookFormData } from '../api';
+import { Book, createBook, updateBook, getBook, getBooks, lookupISBN, searchByTitle, TitleSearchResult, BookFormData, bookCoverUrl } from '../api';
 import { BarcodeScanner } from './BarcodeScanner';
 
 const TAGS = ['Conceptual', 'Documentary', 'Fashion', 'Landscape', 'Nudity', 'Portrait', 'StreetPhotography', 'WarPhotography'] as const;
@@ -75,10 +75,12 @@ export function BookForm() {
   const [authors, setAuthors] = useState<string[]>([]);
   const [collections, setCollections] = useState<string[]>([]);
   const [prizes, setPrizes] = useState<string[]>([]);
+  const [allBooks, setAllBooks] = useState<Book[]>([]);
   const [authorInput, setAuthorInput] = useState('');
 
   const loadSuggestions = useCallback(async () => {
     const books = await getBooks();
+    setAllBooks(books);
     setPublishers([...new Set(books.map((b) => b.editorial).filter(Boolean))].sort());
     setAuthors([...new Set(books.flatMap((b) => splitAuthors(b.author)))].sort());
     setCollections([...new Set(books.map((b) => b.collection).filter(Boolean))].sort());
@@ -88,6 +90,21 @@ export function BookForm() {
   useEffect(() => {
     loadSuggestions();
   }, [loadSuggestions]);
+
+  const currentAuthors = useMemo(() => splitAuthors(form.author), [form.author]);
+
+  const relatedBooks = useMemo(() => {
+    if (!isEditing || !id || currentAuthors.length === 0) return [];
+    const currentId = parseInt(id);
+    const authorSet = new Set(currentAuthors);
+    return allBooks
+      .filter(
+        (b) =>
+          b.id !== currentId &&
+          splitAuthors(b.author).some((a) => authorSet.has(a))
+      )
+      .sort((a, b) => (b.year_of_publication ?? 0) - (a.year_of_publication ?? 0));
+  }, [allBooks, currentAuthors, id, isEditing]);
 
   useEffect(() => {
     if (!isEditing || !id) return;
@@ -695,6 +712,54 @@ export function BookForm() {
             )}
           </div>
         </form>
+
+        {/* More by this author — shown in edit mode when there are related books */}
+        {isEditing && relatedBooks.length > 0 && (
+          <div className="mt-8 pt-6 border-t border-gray-200">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">
+              More by {currentAuthors.length === 1 ? currentAuthors[0] : 'these authors'}
+            </h3>
+            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none">
+              {relatedBooks.map((b) => (
+                <button
+                  key={b.id}
+                  type="button"
+                  onClick={() =>
+                    navigate(`/edit/${b.id}`, {
+                      state: { from: state?.from, listIds },
+                    })
+                  }
+                  className="shrink-0 w-28 group text-left"
+                >
+                  <div className="w-28 h-40 rounded-lg overflow-hidden shadow-sm border border-gray-100 group-hover:shadow-md group-hover:border-gray-200 transition-all duration-200">
+                    {b.has_cover ? (
+                      <img
+                        src={bookCoverUrl(b.id)}
+                        alt=""
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-b from-gray-100 to-gray-200 flex items-center justify-center p-2">
+                        <p className="text-[10px] text-gray-500 text-center font-medium leading-tight line-clamp-4">
+                          {b.title}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-xs font-medium text-gray-800 mt-1.5 line-clamp-2 leading-tight group-hover:text-indigo-600 transition-colors">
+                    {b.title}
+                  </p>
+                  {b.year_of_publication && (
+                    <p className="text-[10px] text-gray-400 mt-0.5">
+                      {b.year_of_publication}
+                    </p>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

@@ -2,6 +2,8 @@
 
 A personal book database app to catalog your physical book collection. Add books manually or scan their ISBN barcode with your camera.
 
+**Live app**: [book-database-qawg.onrender.com](https://book-database-qawg.onrender.com/)
+
 ## Stack
 
 - **Frontend**: React 18 + TypeScript + Vite + Tailwind CSS
@@ -10,11 +12,23 @@ A personal book database app to catalog your physical book collection. Add books
 - **Barcode scanning**: `@zxing/library`
 - **Hosting**: [Render](https://render.com) (free tier)
 
+## Features
+
+- **Browse** your book collection in list or 3D shelf view
+- **Add books** with title, author, editorial, year, ISBN, tags, description, cover photo, and prize
+- **Edit or delete** existing books
+- **Scan ISBN barcodes** using your device camera
+- **Look up book info** automatically from Open Library by ISBN or title
+- **Filter and search** by tag, type, publisher, author, collection, and year range
+- **Save & navigate** through filtered results with Save & Next / Save & Previous
+- **Related books** section showing other books by the same author
+- **Admin panel** to manage and clean up field values across the library
+
 ## Requirements
 
-- Node.js v22.5+ (uses the built-in `node:sqlite` module as fallback for local development)
+- Node.js v22.5+
 
-## Getting Started
+## Getting Started (local development)
 
 Install dependencies (first time only):
 
@@ -46,90 +60,47 @@ In development, the Vite dev server proxies `/api` requests to the backend. The 
 
 ## Deployment
 
-The app is configured for deployment on Render's free tier with Turso as the database.
+The app is deployed on Render's free tier with Turso as the database.
 
-### 1. Create a Turso database
+### 1. Set up Turso
 
-Install the Turso CLI and sign up:
+Install the Turso CLI:
 
 ```bash
 brew install tursodatabase/tap/turso
 ```
 
-or
+Or via the install script:
 
 ```bash
 curl -sSfL https://get.tur.so/install.sh | bash
-turso auth login
 ```
 
-After that you must see the message
-
-Turso CLI installed!
-
-Open a new terminal
-
-If you are a new user, you can sign up with turso auth signup.
-
-If you already have an account, please login with turso auth login.
+Sign up or log in (opens your browser):
 
 ```bash
-turso auth signup.
+turso auth signup   # new account
+turso auth login    # existing account
 ```
-
-or
-
-```bash
-turso auth login.
-```
-
-After that you will see the message:
-
-Opening your browser at:
-https://api.turso.tech/signup?port=63947&redirect=true&state=i75jl6euKwgdLdE1Wb34niH7jQW0micj&type=cli
-Waiting for authentication...
-✔  Success! Logged in as pabloperezmartin
-
-✏️  We are so happy you are here!
-Now that you are authenticated, it is time to create a database:
-        turso db create
 
 Create a database from your local SQLite file:
 
 ```bash
 turso db create book-database --from-file backend/books.db
 ```
-You will see the message:
 
-Uploaded data in 1 seconds.
-
-Created group default at aws-eu-west-1 in 903ms.
-Created database book-database at group default in 702ms.
-
-Start an interactive SQL shell with:
-
-   turso db shell book-database
-
-To see information about the database, including a connection URL, run:
-
-   turso db show book-database
-
-To get an authentication token for the database, run:
-
-   turso db tokens create book-database
-
-Get the connection URL and auth token:
+Get the connection URL and auth token (save both for Render):
 
 ```bash
 turso db show book-database --url
 turso db tokens create book-database
 ```
 
-### 2. Deploy on Render
+### 2. Set up Render
 
 1. Push your code to GitHub
 2. Go to [render.com](https://render.com) and create a new **Web Service** connected to your repo
-3. Render auto-detects the `render.yaml`, or set manually:
+3. Render auto-detects the `render.yaml`, or configure manually:
    - **Build command**: `npm run render-build`
    - **Start command**: `npm start`
    - **Plan**: Free
@@ -138,12 +109,22 @@ turso db tokens create book-database
    - `TURSO_AUTH_TOKEN` — the token from step 1
    - `NODE_VERSION` — `22`
 5. Deploy
-6. The new url will:
-
-[book-database-qawg.onrender.com/](https://book-database-qawg.onrender.com/) 
-
 
 In production, the Express server serves both the API and the built frontend on a single port (`PORT` is set by Render).
+
+### 3. Deploying updates
+
+Every push to `main` triggers an automatic redeploy on Render:
+
+```bash
+git add .
+git commit -m "Your changes"
+git push
+```
+
+You can monitor the deploy in the Render dashboard under **Events** or **Logs**.
+
+To trigger a manual redeploy (e.g. after changing an environment variable), go to your Render service and click **Manual Deploy > Deploy latest commit**.
 
 ### Render free tier notes
 
@@ -184,21 +165,9 @@ ngrok will print a line like:
 Forwarding  https://abc123.ngrok-free.app -> http://localhost:5173
 ```
 
-Open that `https://` URL on your phone. The first time, ngrok may show a browser warning — tap **Visit Site** to continue. The camera and barcode scanner will work because the connection is HTTPS.
+Open that `https://` URL on your phone. The first time, ngrok may show a browser warning — tap **Visit Site** to continue.
 
 > **Note:** Always stop the app with **Ctrl+C**, not Ctrl+Z. Using Ctrl+Z suspends the process without releasing the port, which causes `EADDRINUSE` errors on the next start.
-
-## Features
-
-- **Browse** your book collection in list or 3D shelf view
-- **Add books** with title, author, editorial, year, ISBN, tags, description, cover photo, and prize
-- **Edit or delete** existing books
-- **Scan ISBN barcodes** using your device camera
-- **Look up book info** automatically from Open Library by ISBN or title
-- **Filter and search** by tag, type, publisher, author, collection, and year range
-- **Save & navigate** through filtered results with Save & Next / Save & Previous
-- **Related books** section showing other books by the same author
-- **Admin panel** to manage and clean up field values across the library
 
 ## API Endpoints
 
@@ -222,15 +191,15 @@ Books are stored in a Turso database (production) or a local SQLite file at `bac
 
 Cover images are stored as base64 data URIs in the database. The list endpoint excludes them for performance — covers are served individually via `/api/books/:id/cover` with 24-hour browser caching.
 
-## How to do a Push
+## Git Setup
 
-1. Set GitHub Token
+Set the GitHub remote (first time only):
 
 ```bash
 git remote set-url origin https://token@github.com/pabloperezmartin/book-database.git
 ```
 
-2. Execute the Push
+Push changes:
 
 ```bash
 git push

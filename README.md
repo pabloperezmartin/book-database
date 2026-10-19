@@ -138,6 +138,10 @@ turso db tokens create book-database
    - `TURSO_AUTH_TOKEN` — the token from step 1
    - `NODE_VERSION` — `22`
 5. Deploy
+6. The new url will:
+
+[book-database-qawg.onrender.com/](https://book-database-qawg.onrender.com/) 
+
 
 In production, the Express server serves both the API and the built frontend on a single port (`PORT` is set by Render).
 

@@ -53,15 +53,70 @@ The app is configured for deployment on Render's free tier with Turso as the dat
 Install the Turso CLI and sign up:
 
 ```bash
+brew install tursodatabase/tap/turso
+```
+
+or
+
+```bash
 curl -sSfL https://get.tur.so/install.sh | bash
 turso auth login
 ```
+
+After that you must see the message
+
+Turso CLI installed!
+
+Open a new terminal
+
+If you are a new user, you can sign up with turso auth signup.
+
+If you already have an account, please login with turso auth login.
+
+```bash
+turso auth signup.
+```
+
+or
+
+```bash
+turso auth login.
+```
+
+After that you will see the message:
+
+Opening your browser at:
+https://api.turso.tech/signup?port=63947&redirect=true&state=i75jl6euKwgdLdE1Wb34niH7jQW0micj&type=cli
+Waiting for authentication...
+✔  Success! Logged in as pabloperezmartin
+
+✏️  We are so happy you are here!
+Now that you are authenticated, it is time to create a database:
+        turso db create
 
 Create a database from your local SQLite file:
 
 ```bash
 turso db create book-database --from-file backend/books.db
 ```
+You will see the message:
+
+Uploaded data in 1 seconds.
+
+Created group default at aws-eu-west-1 in 903ms.
+Created database book-database at group default in 702ms.
+
+Start an interactive SQL shell with:
+
+   turso db shell book-database
+
+To see information about the database, including a connection URL, run:
+
+   turso db show book-database
+
+To get an authentication token for the database, run:
+
+   turso db tokens create book-database
 
 Get the connection URL and auth token:
 

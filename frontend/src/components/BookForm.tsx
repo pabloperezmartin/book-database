@@ -213,6 +213,28 @@ export function BookForm() {
       submitter?.value === 'next' ? 'next' :
       submitter?.value === 'prev' ? 'prev' : 'finish';
 
+    if (!isEditing) {
+      const titleMatch = allBooks.find(
+        (b) => b.title.toLowerCase() === form.title.trim().toLowerCase(),
+      );
+      const isbnMatch =
+        form.isbn.trim() &&
+        allBooks.find(
+          (b) => b.isbn && b.isbn === form.isbn.trim(),
+        );
+      const duplicate = titleMatch || isbnMatch;
+      if (duplicate) {
+        const reason = titleMatch && isbnMatch
+          ? `title "${duplicate.title}" and ISBN "${duplicate.isbn}"`
+          : titleMatch
+            ? `title "${duplicate.title}"`
+            : `ISBN "${duplicate.isbn}"`;
+        if (!confirm(`A book with the same ${reason} already exists. Add it anyway?`)) {
+          return;
+        }
+      }
+    }
+
     setSaving(intent);
     try {
       const payload = {

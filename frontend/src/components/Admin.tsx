@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   AdminField,
   FieldValue,
@@ -10,12 +11,12 @@ import {
   fixCleanup,
 } from '../api';
 
-const TABS: { field: AdminField; label: string; noun: string }[] = [
-  { field: 'editorial', label: 'Publishers', noun: 'publisher' },
-  { field: 'author', label: 'Authors', noun: 'author' },
-  { field: 'type', label: 'Types', noun: 'type' },
-  { field: 'collection', label: 'Collections', noun: 'collection' },
-  { field: 'tags', label: 'Tags', noun: 'tag' },
+const TABS: { field: AdminField; label: string; noun: string; param: string }[] = [
+  { field: 'editorial', label: 'Publishers', noun: 'publisher', param: 'pub' },
+  { field: 'author', label: 'Authors', noun: 'author', param: 'author' },
+  { field: 'type', label: 'Types', noun: 'type', param: 'type' },
+  { field: 'collection', label: 'Collections', noun: 'collection', param: 'col' },
+  { field: 'tags', label: 'Tags', noun: 'tag', param: 'tag' },
 ];
 
 /** Renders otherwise-invisible differences so identical-looking rows can be told apart. */
@@ -27,6 +28,7 @@ const describeOddity = (value: string): string | null => {
 };
 
 export function Admin() {
+  const navigate = useNavigate();
   const [field, setField] = useState<AdminField>('editorial');
   const [values, setValues] = useState<FieldValue[]>([]);
   const [cleanup, setCleanup] = useState<CleanupGroup[]>([]);
@@ -310,13 +312,17 @@ export function Admin() {
                     </div>
                   ) : (
                     <div className="flex items-center gap-3">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm text-gray-800 truncate">{v.value}</p>
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/?${tab.param}=${encodeURIComponent(v.value)}`)}
+                        className="min-w-0 flex-1 text-left group/link"
+                      >
+                        <p className="text-sm text-gray-800 truncate group-hover/link:text-indigo-600 transition-colors">{v.value}</p>
                         <p className="text-xs text-gray-400">
                           {v.count} book{v.count === 1 ? '' : 's'}
                           {oddity && <span className="text-amber-600"> · {oddity}</span>}
                         </p>
-                      </div>
+                      </button>
                       <button
                         onClick={() => startEdit(v.value)}
                         disabled={busy}

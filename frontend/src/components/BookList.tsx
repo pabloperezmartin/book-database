@@ -26,8 +26,15 @@ type SortField =
   | 'type'
   | 'editorial'
   | 'year_of_publication'
-  | 'created_at';
+  | 'created_at'
+  | 'updated_at';
 type SortDir = 'asc' | 'desc';
+type GroupBy = '' | 'author' | 'editorial';
+
+interface BookGroup {
+  label: string;
+  books: Book[];
+}
 
 export function BookList() {
   const navigate = useNavigate();
@@ -49,6 +56,17 @@ export function BookList() {
   const sortField = (params.get('sort') as SortField) || 'created_at';
   const sortDir = (params.get('dir') as SortDir) || 'desc';
   const viewMode = params.get('view') === 'shelf' ? 'shelf' : 'list';
+  const groupBy = (params.get('group') as GroupBy) || '';
+
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const toggleGroup = (label: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label); else next.add(label);
+      return next;
+    });
+  const collapseAll = (labels: string[]) => setCollapsed(new Set(labels));
+  const expandAll = () => setCollapsed(new Set());
 
   const setParam = (key: string, value: string) =>
     setParams((prev) => {
@@ -152,6 +170,32 @@ export function BookList() {
       return 0;
     });
 
+  const groups = useMemo<BookGroup[]>(() => {
+    if (!groupBy) return [];
+    const map = new Map<string, Book[]>();
+    for (const book of filtered) {
+      const keys =
+        groupBy === 'author'
+          ? splitAuthors(book.author).length > 0
+            ? splitAuthors(book.author)
+            : ['Unknown']
+          : [book.editorial || 'Unknown'];
+      for (const key of keys) {
+        if (!map.has(key)) map.set(key, []);
+        map.get(key)!.push(book);
+      }
+    }
+    return [...map.entries()]
+      .sort(([a], [b]) => {
+        if (a === 'Unknown') return 1;
+        if (b === 'Unknown') return -1;
+        return a.localeCompare(b);
+      })
+      .map(([label, books]) => ({ label, books }));
+  }, [filtered, groupBy]);
+
+  const listIds = useMemo(() => filtered.map((b) => b.id), [filtered]);
+
   return (
     <div>
       <div className="sticky top-[56px] bg-gray-50/95 backdrop-blur-sm pt-2 pb-3 z-10 border-b border-gray-200/60">
@@ -185,6 +229,7 @@ export function BookList() {
             className="flex-1 border border-gray-300 rounded-xl px-3 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
           >
             <option value="created_at">Date added</option>
+            <option value="updated_at">Date modified</option>
             <option value="title">Title</option>
             <option value="author">Author</option>
             <option value="collection">Collection</option>
@@ -199,6 +244,18 @@ export function BookList() {
           >
             {sortDir === 'asc' ? '↑' : '↓'}
           </button>
+          <span className="text-xs text-gray-500 shrink-0 font-medium ml-1">Group</span>
+          <select
+            value={groupBy}
+            onChange={(e) => { setParam('group', e.target.value); setCollapsed(new Set()); }}
+            className={`border rounded-xl px-2.5 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm ${
+              groupBy ? 'border-indigo-500 text-indigo-700 font-medium' : 'border-gray-300 text-gray-600'
+            }`}
+          >
+            <option value="">None</option>
+            <option value="author">Author</option>
+            <option value="editorial">Publisher</option>
+          </select>
           <div className="border border-gray-300 rounded-xl overflow-hidden flex shadow-sm ml-1">
             <button
               onClick={() => setParam('view', '')}
@@ -368,16 +425,75 @@ export function BookList() {
         </div>
       )}
 
-      {!loading && !error && filtered.length > 0 && viewMode === 'list' && (
+      {!loading && !error && filtered.length > 0 && !groupBy && viewMode === 'list' && (
         <div className="space-y-2.5 mt-2 pb-20">
           {filtered.map((book) => (
-            <BookCard key={book.id} book={book} onDeleted={handleDeleted} listIds={filtered.map(b => b.id)} />
+            <BookCard key={book.id} book={book} onDeleted={handleDeleted} listIds={listIds} />
           ))}
         </div>
       )}
 
-      {!loading && !error && filtered.length > 0 && viewMode === 'shelf' && (
-        <BookShelf books={filtered} listIds={filtered.map(b => b.id)} />
+      {!loading && !error && filtered.length > 0 && !groupBy && viewMode === 'shelf' && (
+        <BookShelf books={filtered} listIds={listIds} />
+      )}
+
+      {!loading && !error && filtered.length > 0 && !!groupBy && (
+        <div className="mt-2 pb-20">
+          <div className="flex items-center justify-end gap-2 mb-2">
+            <button
+              onClick={expandAll}
+              className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+            >
+              Expand all
+            </button>
+            <span className="text-gray-300">|</span>
+            <button
+              onClick={() => collapseAll(groups.map((g) => g.label))}
+              className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+            >
+              Collapse all
+            </button>
+          </div>
+          {groups.map((group) => {
+            const isCollapsed = collapsed.has(group.label);
+            return (
+              <div key={group.label} className="mb-3">
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(group.label)}
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-gray-200 shadow-sm hover:bg-gray-50 transition-colors"
+                >
+                  <svg
+                    className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isCollapsed ? '' : 'rotate-90'}`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                  <span className="text-sm font-semibold text-gray-800 truncate">{group.label}</span>
+                  <span className="ml-auto text-xs text-gray-400 shrink-0">
+                    {group.books.length} {group.books.length === 1 ? 'book' : 'books'}
+                  </span>
+                </button>
+                {!isCollapsed && (
+                  viewMode === 'list' ? (
+                    <div className="space-y-2.5 mt-2 ml-2">
+                      {group.books.map((book) => (
+                        <BookCard key={book.id} book={book} onDeleted={handleDeleted} listIds={listIds} />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="mt-2 ml-2">
+                      <BookShelf books={group.books} listIds={listIds} />
+                    </div>
+                  )
+                )}
+              </div>
+            );
+          })}
+        </div>
       )}
 
       <button
